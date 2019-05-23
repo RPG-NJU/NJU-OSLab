@@ -48,3 +48,12 @@ struct StackFrame {
 };
 ```
 如果为`0x80`的调用，则进一步调用`syscallHandle`函数，根据`eax`进行不同的系统调用
+
+在关于信号量的`sem`前缀的调用中，进行的是二级调用，在`syscall`函数的调用中，有类似的如下调用：
+```c
+int sem_wait(sem_t *sem) {
+	return syscall(SYS_SEM, SEM_WAIT, *sem, 0, 0, 0);
+}
+```
+如上所示，调用的过程中需要第一个实际的参数应该对应于`a2`这个参数
+

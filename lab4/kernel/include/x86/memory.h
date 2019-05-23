@@ -15,7 +15,8 @@
 #define STS_TG32    0xF         // 32-bit Trap Gate
 
 // GDT entries
-#define NR_SEGMENTS      10           // GDT size
+#define NR_SEGMENTS      18 //10           // GDT size
+// GRP CHANGE for 1.2
 #define SEG_KCODE   1           // Kernel code
 #define SEG_KDATA   2           // Kernel data/stack
 #define SEG_TSS     (NR_SEGMENTS-1)

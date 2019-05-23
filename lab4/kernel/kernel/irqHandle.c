@@ -9,6 +9,9 @@
 #define SYS_EXIT 5
 #define SYS_SEM 6
 
+// GRP ADD
+#define SYS_PID 7
+
 #define STD_OUT 0
 #define STD_IN 1
 
@@ -53,6 +56,9 @@ void syscallSemInit(struct StackFrame *sf);
 void syscallSemWait(struct StackFrame *sf);
 void syscallSemPost(struct StackFrame *sf);
 void syscallSemDestroy(struct StackFrame *sf);
+
+// GRP ADD
+void syscallPid(struct StackFrame *sf);
 
 void irqHandle(struct StackFrame *sf) { // pointer sf = esp
 	/* Reassign segment register */
@@ -185,6 +191,9 @@ void syscallHandle(struct StackFrame *sf) {
 		case SYS_SEM:
 			syscallSem(sf);
 			break; // for SYS_SEM
+		case SYS_PID:
+			syscallPid(sf);
+			break; // for SYS_PID
 		default:break;
 	}
 }
@@ -393,7 +402,8 @@ void syscallSem(struct StackFrame *sf) {
 	}
 }
 
-void syscallSemInit(struct StackFrame *sf) {
+void syscallSemInit(struct StackFrame *sf) 
+{
 	int i;
 	for (i = 0; i < MAX_SEM_NUM ; i++) {
 		if (sem[i].state == 0) // not in use
@@ -402,7 +412,7 @@ void syscallSemInit(struct StackFrame *sf) {
 	if (i != MAX_SEM_NUM) {
 		sem[i].state = 1;
 		sem[i].value = (int32_t)sf->edx;
-		sem[i].pcb.next = &(sem[i].pcb);
+		sem[i].pcb.next = &(sem[i].pcb); // 用自己的位置作为指针，本质上是一个无效的位置
 		sem[i].pcb.prev = &(sem[i].pcb);
 		pcb[current].regs.eax = i;
 	}
@@ -411,14 +421,100 @@ void syscallSemInit(struct StackFrame *sf) {
 	return;
 }
 
-void syscallSemWait(struct StackFrame *sf) {
+void syscallSemWait(struct StackFrame *sf) 
+{
+	/*
+	void P(Semaphore *s) {
+    s->value --;
+    if (s->value < 0)
+        W(s);
+	}
+	*/
+	//Semaphore *this_sem = (Semaphore*)sf->edx;
+	int i = (uint32_t)sf->edx;
+	--sem[i].value;
+	// putChar(sem[i].value + '0');
+	// putChar('\n');
+	if (sem[i].value < 0)
+	{
+		struct ListHead *old_tail = sem[i].pcb.prev;
+		
+		old_tail->next = &(pcb[current].blocked);
+		sem[i].pcb.prev = &(pcb[current].blocked);
+		pcb[current].blocked.prev = old_tail;
+		pcb[current].blocked.next = &(sem[i].pcb);
+
+		pcb[current].state = STATE_BLOCKED;
+		asm volatile("int $0x20");
+	}
 	return;
 }
 
-void syscallSemPost(struct StackFrame *sf) {
+void syscallSemPost(struct StackFrame *sf) 
+{
+	/*
+	void V(Semaphore *s) {
+    s->value ++;
+    if (s->value <= 0)
+        R(s);
+	}
+	*/
+	int i = (uint32_t)sf->edx;
+	++sem[i].value;
+
+	if (sem[i].value <= 0) // 此时需要唤醒一个进程
+	{
+		struct ListHead *wake = sem[i].pcb.next;
+
+		wake->prev->next = wake->next;
+		wake->next->prev = wake->prev;
+
+		wake->next = NULL;
+		wake->prev = NULL;
+
+		uint32_t wake_pid = *(uint32_t*)((char*)wake - 36);
+		int wake_i = 0;
+		for ( ; wake_i < MAX_PCB_NUM; ++wake_i)
+		{
+			if (pcb[wake_i].pid == wake_pid)
+				break;
+		}
+		if (wake_i == MAX_PCB_NUM)
+		{
+			putChar('W'); putChar('\n');
+		}
+		pcb[wake_i].state = STATE_RUNNABLE;
+	}
 	return;
 }
 
-void syscallSemDestroy(struct StackFrame *sf) {
+void syscallSemDestroy(struct StackFrame *sf) 
+{
+	int i = (uint32_t)sf->edx;
+
+	if (sem[i].state == 1)
+	{
+		sem[i].state = 0;
+		pcb[current].regs.eax = 0;
+	}
+	else
+	{
+		pcb[current].regs.eax = -1;
+	}
+	
+	return;
+}
+
+void syscallPid(struct StackFrame *sf)
+{
+	// 返回值放在eax寄存器中就可以了
+	int i = 0;
+	for ( ; i < MAX_PCB_NUM; ++i)
+	{
+		if (pcb[i].state == STATE_RUNNING)
+			break;
+	}
+	
+	pcb[current].regs.eax = i < MAX_PCB_NUM ? pcb[i].pid : -1; // -1 should never be return
 	return;
 }

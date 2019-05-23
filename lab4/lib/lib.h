@@ -11,6 +11,9 @@
 #define SYS_EXIT 5
 #define SYS_SEM 6
 
+// GRP ADD
+#define SYS_PID 7 // 系统调用号，得到当前进程的进程号
+
 #define STD_OUT 0
 #define STD_IN 1
 
@@ -40,5 +43,7 @@ int sem_wait(sem_t *sem);
 int sem_post(sem_t *sem);
 
 int sem_destroy(sem_t *sem);
+
+int getpid(void);
 
 #endif

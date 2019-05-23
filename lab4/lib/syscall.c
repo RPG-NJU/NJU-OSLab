@@ -594,6 +594,7 @@ int exit() {
 
 int sem_init(sem_t *sem, uint32_t value) {
 	*sem = syscall(SYS_SEM, SEM_INIT,  value, 0, 0, 0);
+	// printf("<%d>\n", *sem);
 	if (*sem != -1)
 		return 0;
 	else
@@ -610,4 +611,10 @@ int sem_post(sem_t *sem) {
 
 int sem_destroy(sem_t *sem) {
 	return syscall(SYS_SEM, SEM_DESTROY, *sem, 0, 0, 0);
+}
+
+int getpid(void)
+{
+	// 返回当前的进程号
+	return syscall(SYS_PID, 0, 0, 0, 0, 0);
 }

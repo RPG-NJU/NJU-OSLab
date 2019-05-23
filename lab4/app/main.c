@@ -9,17 +9,25 @@ int uEntry(void)
     int i = 4;
     int ret = 0;
     sem_t sem;
+
+    // printf("Pid %d\n", getpid());
+    // sleep(128);
+
     printf("Father Process: Semaphore Initializing.\n");
     ret = sem_init(&sem, 2);
-    if (ret == -1) {
+    if (ret == -1) // 如果进入这个分支，则说明fork失败，理论上是不可能的
+    {
         printf("Father Process: Semaphore Initializing Failed.\n");
         exit();
     }
 
     ret = fork();
-    if (ret == 0) {
-        while( i != 0) {
+    if (ret == 0) 
+    {
+        while(i != 0) 
+        {
             i --;
+            // printf("Pid %d\n", getpid());
             printf("Child Process: Semaphore Waiting.\n");
             sem_wait(&sem);
             printf("Child Process: In Critical Area.\n");
@@ -28,9 +36,12 @@ int uEntry(void)
         sem_destroy(&sem);
         exit();
     }
-    else if (ret != -1) {
-        while( i != 0) {
+    else if (ret != -1) 
+    {
+        while( i != 0) 
+        {
             i --;
+            // printf("Pid %d\n", getpid());
             printf("Father Process: Sleeping.\n");
             sleep(128);
             printf("Father Process: Semaphore Posting.\n");
